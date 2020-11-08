@@ -1,3 +1,38 @@
 syntax = "proto3";
 
 package masterworker;
+
+
+service MapReduce {
+    rpc MapJob(MapIn) returns (MapOut) {}
+    rpc ReduceJob(ReduceIn) returns (ReduceOut) {}
+}
+
+message MapIn {
+    int32 shard_id = 1;
+    string user_id = 2;
+    repeated Shard shard = 3;
+}
+
+message MapOut {
+    bool complete = 1;
+    repeated string filepaths = 2;
+}
+
+message ReduceIn {
+    int32 part_id = 1;
+    string user_id = 2;
+    repeated string filepaths = 3;
+}
+
+message ReduceOut {
+    bool complete = 1;
+}
+
+message Shard {
+    string filepath = 1;
+    int32 start = 2;
+    int32 end = 3;
+    int32 shard_size = 4;
+}
+
