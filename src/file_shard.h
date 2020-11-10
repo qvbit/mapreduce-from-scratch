@@ -53,11 +53,27 @@ inline bool shard_files(const MapReduceSpec& mr_spec, vector<FileShard>& fileSha
           while (fsize_remain > 0) {
                int block_size;
                FileShard file_shard;
-               streamsize map_size = mr_spec.map_kilobytes;
+               streamsize map_size;
 
                // Check if old fileshard still has space left
-               // Update map_size, update file_shard if so.
-               
+               if (!fileShards.empty()) {
+                    FileShard prev_file_shard = fileShards.back();
+                    streamsize space_left = prev_file_shard.shard_size - (mr_spec.map_kilobytes * CONVERSION);
+                    // Space left in previous shard
+                    if (space_left > 0) {
+                         map_size = space_left;
+                         fileShards.pop_back(); // Get rid of this, we'll update it and put it back.
+                         file_shard = prev_file_shard;
+                    }
+                    else { // Else create new shard
+                         map_size = mr_spec.map_kilobytes;
+                         file_shard.shard_size = 0;
+                    }
+               }
+               else { // First element always creates new shard
+                    map_size = mr_spec.map_kilobytes;
+                    file_shard.shard_size = 0;
+               }
 
                // Get start position
                streampos start = ifs.tellg();
