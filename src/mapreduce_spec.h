@@ -30,7 +30,7 @@ inline bool read_mr_spec_from_config_file(const string& config_filename, MapRedu
 	string line;
 
 	if (!ifs.is_open()) {
-		cerr << "[mapreduce_spec.h][read_mr_spec_from_config_file] ERROR: Not able to find file" << endl;
+		cerr << "[mapreduce_spec.h] ERROR: Not able to find file" << endl;
 		return false;
 	}
 
