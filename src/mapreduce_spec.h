@@ -59,10 +59,8 @@ inline bool read_mr_spec_from_config_file(const string& config_filename, MapRedu
 	mr_spec.map_kilobytes = stoi(config_map["map_kilobytes"][0]);
 	mr_spec.n_output_files = stoi(config_map["n_output_files"][0]);
 	mr_spec.n_workers = stoi(config_map["n_workers"][0]);
-
 	mr_spec.input_files = config_map["input_files"];
 	mr_spec.worker_ipaddr_ports = config_map["worker_ipaddr_ports"];
-
 	mr_spec.user_id = config_map["user_id"][0];
 	mr_spec.output_dir = config_map["output_dir"][0];
 
@@ -76,28 +74,25 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec) {
 	// Helper to print vector elements.
 	auto print_vector = [](vector<string> const &input) {
 		for (auto const& i : input) {
-			cout << "	" << i << endl;
+			cout << "\t" << i << endl;
 		}
 	};
 
+	// Validate mr_spec
+	// TODO: Validate mr_spec
+
+	// Print out mr_spec
 	cout << "----------------- Displaying Mr. Spec -----------------" << endl;
 	cout << "n_workers: " << mr_spec.n_workers << endl;
-
 	cout << "worker_ipaddr_ports: " << endl;
 	print_vector(mr_spec.worker_ipaddr_ports);
-	
 	cout << "input_files: " << endl;
 	print_vector(mr_spec.input_files);
-
 	cout << "output_dir: " << mr_spec.output_dir << endl;
-
 	cout << "n_output_files: " << mr_spec.n_output_files << endl;
-
 	cout << "map_kilobytes: " << mr_spec.map_kilobytes << endl;
-
 	cout << "user_id: " << mr_spec.user_id << endl;
-
 	cout << "------------------- End of Mr. Spec -------------------" << endl;
-
+	
 	return true;
 }
