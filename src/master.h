@@ -42,56 +42,8 @@ class Master {
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 		// Base class that holds relevant state from worker in general.
-		class WorkerState {
-		public:
-			WorkerState(int worker_id) : worker_id_(worker_id) {}
-			
-			grpc::Status status_;
-			grpc::ClientContext context_;
-			int worker_id_;
-		};
 
-		// Mapper Derived Class
-		class MapperState : public WorkerState {
-		public:
-			MapperState(int worker_id, masterworker::MapIn map_in)
-				: WorkerState(worker_id), in_(map_in) {}
-			
-			masterworker::MapIn in_;
-			masterworker::MapOut out_;
-			unique_ptr<grpc::ClientAsyncResponseReader<masterworker::MapOut>> response_reader_;
-		};
-
-		// Reducer Derived Class
-		class ReducerState : public WorkerState {
-		public:
-			ReducerState(int worker_id, masterworker::ReduceIn reduce_in)
-				: WorkerState(worker_id), in_(reduce_in) {}
-
-			masterworker::ReduceIn in_;
-			masterworker::ReduceOut out_;
-			unique_ptr<grpc::ClientAsyncResponseReader<masterworker::ReduceOut>> response_reader_;
-		}
-
-		// Readies the worker given corresponding type (map/reduce)
-		class ReadyWorker {
-		public:
-			ReadyWorker(
-				string worker_ipaddr,
-				shared_ptr<grpc::Channel>,
-				WorkerState worker_state
-			) :	worker_addr_(worker)
-
-		}
-
-
-
-
-
-
-
-
-
+		
 
 };
 
