@@ -11,10 +11,12 @@
 
 using namespace std;
 
+// Compnents within the FileShard struct.
 struct ShardComponent {
      string filepath;
      streampos start;
      streampos end;
+     int component_size;
 };
 
 /* CS6210_TASK: Create your own data structure here, where you can hold information about file splits,
@@ -22,10 +24,10 @@ struct ShardComponent {
 struct FileShard {
      int shard_id;
      int shard_size;
+     // TODO: Would be effecient to have vector of pointers to struct rather than struct.
      vector<ShardComponent> shard_components;
 };
 
-// Reference: https://stackoverflow.com/questions/2409504/using-c-filestreams-fstream-how-can-you-determine-the-size-of-a-file
 inline streamsize calc_filesize(const string& filepath) {
      ifstream ifs(filepath, ios::ate | ios::binary);
      if (!ifs.is_open()) {
@@ -46,12 +48,14 @@ inline void display_shard_component(const ShardComponent& shard_component) {
 }
 
 inline void display_file_shard(const FileShard& file_shard) {
+     cout << "--------------------File Shard id: " << file_shard.shard_id << "------------------------" << endl;
      cout << "File Shard id: " << file_shard.shard_id << endl;
      cout << "Shard size: " << (file_shard.shard_size / CONVERSION) << endl;
      
      for (auto const& shard_component : file_shard.shard_components) {
           display_shard_component(shard_component);
      }
+     cout << "------------------------------------------------------------" << endl;
 }
 
 inline void display_all_file_shards(const vector<FileShard>& fileShards) {
@@ -131,6 +135,7 @@ inline bool shard_files(const MapReduceSpec& mr_spec, vector<FileShard>& fileSha
                shard_component.filepath = filepath;
                shard_component.start = start;
                shard_component.end = end;
+               shard_component.component_size = block_size;
 
                // Add this shard component to the full file shard.
                file_shard.shard_size += block_size;
