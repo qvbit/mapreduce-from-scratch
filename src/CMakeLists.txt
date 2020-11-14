@@ -8,7 +8,7 @@ include(GenerateProtos.cmake)
 add_library(
   mapreducelib #library name
   mapreduce.cc mapreduce_impl.cc #sources
-  master.h  mapreduce_spec.h file_shard.h ) #headers
+  master.h  mapreduce_spec.h file_shard.h threadpool.h) #headers
 target_link_libraries(mapreducelib p4protolib)
 target_include_directories(mapreducelib PUBLIC ${MAPREDUCE_INCLUDE_DIR})
 add_dependencies(mapreducelib p4protolib)

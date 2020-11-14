@@ -9,32 +9,26 @@
 
 #include "mapreduce_spec.h"
 #include "file_shard.h"
+#include "threadpool.h"
 #include "masterworker.pb.h"
 #include "masterworker.grpc.pb.h"
-
-#define CONN_TIMEOUT 10 // in ms
-#define RPC_TIMEOUT 2 // in s
 
 using grpc::Channel;
 using grpc::Status;
 using grpc::ClientAsyncResponseReader;
 using grpc::ClientContext;
 using grpc::CompletionQueue;
-using masterworker::MapReduceService;
-using masterworker::MapIn;
-using masterworker::MapOut;
-using masterworker::ReduceOut;
-using masterworker::ShardMessage;
+using masterworker::MapReduceWorker;
+using masterworker::WorkerRequest;
+using masterworker::WorkerReply;
 
-enum WorkerState {
-	AVAILABLE=1,
-	UNAVAILABLE=2
-};
+using namespace std;
+
+enum WorkerState {AVAILABLE=1, BUSY=2};
 
 /* CS6210_TASK: Handle all the bookkeeping that Master is supposed to do.
 	This is probably the biggest task for this project, will test your understanding of map reduce */
 class Master {
-
 	public:
 		/* DON'T change the function signature of this constructor */
 		Master(const MapReduceSpec&, const std::vector<FileShard>&);
@@ -44,10 +38,19 @@ class Master {
 
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
-		// Base class that holds relevant state from worker in general.
+		// Member functions
+		bool runMap();
+		bool runReduce();
+		bool runMapRPC();
+		bool runReduceRPC();
 
-		
-
+		// Data members
+		MapReduceSpec mr_spec_;
+		vector<FileShard> file_shards_;
+		vector<string> intermediate_files_; // Intermediate files output by worker
+		map<string, WorkerState> worker_state_; // <worker_addr, AVAILABLE/BUSY>
+		ThreadPool *pool_;  // Same thread pool from last project
+		int map_tasks_complete;  // Count of how many map tasks have completed. 
 };
 
 

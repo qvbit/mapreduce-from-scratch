@@ -2,32 +2,31 @@ syntax = "proto3";
 
 package masterworker;
 
-service MapReduceService {
-    rpc MapJob(MapIn) returns (MapOut) {}
-    rpc ReduceJob(MapOut) returns (ReduceOut) {}
+service MapReduceWorker {
+    rpc WorkerFn(WorkerRequest) returns (WorkerReply) {}
 }
 
-message MapIn {
-    int32 shard_id = 1;
-    string user_id = 2;
-    repeated ShardMessage shard_component = 3;
-    int64 shard_size = 4;
-}
-
-message MapOut {
-    string filename = 1;
-    string worker_ipaddr = 2;
-}
-
-message ReduceOut {
-    string filename = 1;
-    string worker_ipaddr = 2;
-}
-
-message ShardMessage {
-    string filepath = 1;
+message ShardComp {
+    string filename=1;
     int32 start = 2;
     int32 end = 3;
     int32 component_size = 4;
 }
+
+message WorkerRequest {
+    string user_id = 1;
+    int32 shard_id = 2;
+    repeated ShardComp fileshard = 3;
+    int32 n_output_files = 4;
+    string intermediate_loc = 5;
+    bool job_type = 6;  // 0: Map, 1: Reduce
+}
+
+message WorkerReply {
+    repeated string intermediate_files = 1;
+    bool complete = 2;
+}
+
+
+
 
