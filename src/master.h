@@ -6,6 +6,8 @@
 #include <vector>
 #include <map>
 #include <thread>
+#include <mutex>
+#include <chrono>
 
 #include "mapreduce_spec.h"
 #include "file_shard.h"
@@ -41,16 +43,20 @@ class Master {
 		// Member functions
 		bool runMap();
 		bool runReduce();
-		bool runMapRPC();
-		bool runReduceRPC();
+		bool asyncMap(const string&, const FileShard&);
+		bool asyncReduce(const string&, const FileShard&);
+		string getWorker();
 
 		// Data members
 		MapReduceSpec mr_spec_;
 		vector<FileShard> file_shards_;
 		vector<string> intermediate_files_; // Intermediate files output by worker
-		map<string, WorkerState> worker_state_; // <worker_addr, AVAILABLE/BUSY>
 		ThreadPool *pool_;  // Same thread pool from last project
-		int map_tasks_complete;  // Count of how many map tasks have completed. 
+		map<string, WorkerState> worker_state_; // <worker_addr, AVAILABLE/BUSY>
+		mutex mutex_worker_state_; // Mutex for synchronized access to worker_state_
+		int tasks_left_; // Acts as barrier for all map jobs to finish before starting reduce.
+		mutex mutex_main_; // Main mutex to be used in run()
+		condition_variable cv_main_; // run() waits for signal from this cv before running reduce.
 };
 
 
@@ -60,18 +66,76 @@ Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_
 	pool_ = new ThreadPool(mr_spec.n_workers);
 	file_shards_ = file_shards;
 	mr_spec_ = mr_spec;
-	map_tasks_complete = 0;
-
+	
 	// All workers initially available.
 	for (auto& worker_ipaddr_port : mr_spec.worker_ipaddr_ports) {
 		worker_state_[worker_ipaddr_port] = AVAILABLE;
 	}
+	cout << "[master.h] INFO: Master initialized." << endl;
 }
 
+inline string Master::getWorker() {
+	for (auto& temp_addr : mr_spec_.worker_ipaddr_ports) {
+		if (worker_state_[temp_addr] == AVAILABLE) {
+			worker_state_[temp_addr] = BUSY;
+			return temp_addr;
+		}
+	}
+	return "-1";
+}
+
+bool Master::runMap() {
+	tasks_left_ = file_shards_.size();
+	vector<future<bool>> results;
+	
+	cout << "[master.h] INFO: Running map phase, tasks left: " << tasks_left_ << endl;
+	cout << "[master.h] INFO: # Fileshards: " << file_shards_.size() << endl;
+	for (int i=0; i < file_shards_.size(); i++) {
+		// Assign each file shard to a new thread to handle. 
+		results.emplace_back(
+			pool_->queueTask([this, i] {
+				// Keep looping until we find an available worker.
+				string worker_addr = "-1";
+				while (worker_addr == "-1") {
+					mutex_worker_state_.lock();
+					worker_addr = this->getWorker();
+					mutex_worker_state_.unlock();
+				}
+				// We now have an available worker. Call the RPC.
+				cout << "[master.h] INFO: (runMap) Worker addr:" << worker_addr << " assigned to shard: " << i << endl;
+				bool rpc_res = this->asyncMap(worker_addr, this->file_shards_[i]);
+
+				// Notify main so it can decrement count (this implements barrier).
+				// this->cv_main_.notify_one();
+				return rpc_res;
+			})
+		);
+	}
+    for(auto&& result : results) {
+		cout << "Result!!" << endl;
+        if (!result.get()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+
+bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
+	cout << "[master.h] INFO: (asyncMap) Worker addr:" << worker_addr << " is running now!" << endl;
+
+	this_thread::sleep_for(chrono::seconds(2));
+
+	worker_state_[worker_addr] = AVAILABLE;
+	return true;
+}
 
 
 
 /* CS6210_TASK: Here you go. once this function is called you will complete whole map reduce task and return true if succeeded */
 bool Master::run() {
+	// NOTE: The below barrier implementation is correct because the MapReduce job only runs once.
+	// If it ran more than once, this barrier may lead to race conditions.
+	runMap();
 	return true;
 }

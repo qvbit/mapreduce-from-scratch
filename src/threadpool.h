@@ -1,11 +1,12 @@
 #pragma once
+
 #include <vector>
-#include <thread>
-#include <future>
 #include <queue>
 #include <memory>
+#include <thread>
+#include <mutex>
 #include <condition_variable>
-#include <grpcpp/grpcpp.h>
+#include <future>
 #include <functional>
 #include <stdexcept>
 
@@ -31,23 +32,28 @@ private:
     // Synchronization variables
     mutex queue_mutex_;
     condition_variable cond_;
+    bool complete;
 };
 
 // Queue up the threadpool with ready workers waiting for tasks to do.
-inline ThreadPool::ThreadPool(int nthreads) {
+inline ThreadPool::ThreadPool(int nthreads) : complete(false) {
     for (int i=0; i<nthreads; i++) {
         workers_.emplace_back([this] {
             while(true) {
                 // Task to be run by thread (rpc call)
                 function<void()> task;
-                // Lock queue mutex
-                unique_lock<mutex> lock(this->queue_mutex_);
-                // Wait until queue is not empty signal.
-                this->cond_.wait(lock, [this] {return !this->tasks_.empty(); });
-                // Move (rather than copy) to efficiently assign task from queue.
-                task = move(this->tasks_.front());
-                // Destroy the task since we no longer need it (thus justfying use of move above).
-                this->tasks_.pop();
+                {
+                    // Lock queue mutex
+                    unique_lock<mutex> lock(this->queue_mutex_);
+                    // Wait until queue is not empty signal.
+                    this->cond_.wait(lock, [this] {return this->complete || !this->tasks_.empty(); });
+                    // Move (rather than copy) to efficiently assign task from queue.
+                    if (this->complete && this->tasks_.empty())
+                        return;
+                    task = move(this->tasks_.front());
+                    // Destroy the task since we no longer need it (thus justfying use of move above).
+                    this->tasks_.pop();
+                }
                 // Finally, run the task
                 task();
             }            
@@ -56,7 +62,10 @@ inline ThreadPool::ThreadPool(int nthreads) {
 }
 
 inline ThreadPool::~ThreadPool() {
-    unique_lock<std::mutex> lock(queue_mutex_);
+    {
+        unique_lock<mutex> lock(queue_mutex_);
+        complete = true;
+    }
     cond_.notify_all();
     for(thread &worker: workers_)
         worker.join();
@@ -73,10 +82,14 @@ auto ThreadPool::queueTask(F&& f, Args&&... args)
             bind(std::forward<F>(f), forward<Args>(args)...)
         );  
     future<return_type> res = task->get_future();
-
-    // Place task on queue for worker to grab.
-    unique_lock<mutex> lock(queue_mutex_);
-    tasks_.emplace([task](){ (*task)(); });
+    {
+        // Place task on queue for worker to grab.
+        unique_lock<mutex> lock(queue_mutex_);
+        // don't allow queueTasking after stopping the pool
+        if(complete)
+            throw runtime_error("queueTask on completed threadpool");
+        tasks_.emplace([task](){ (*task)(); });
+    }
 
     // Notify one waiting worker to grab this task.
     cond_.notify_one();
