@@ -1,12 +1,11 @@
 #pragma once
 
-#include <grpc++/channel.h>
-#include <grpc/grpc.h>
-#include <grpc++/create_channel.h>
-#include <grpc++/client_context.h>
+#include <grpc++/grpc++.h>
 #include <string>
 #include <iostream>
-
+#include <vector>
+#include <map>
+#include <thread>
 
 #include "mapreduce_spec.h"
 #include "file_shard.h"
@@ -16,12 +15,16 @@
 #define CONN_TIMEOUT 10 // in ms
 #define RPC_TIMEOUT 2 // in s
 
-using namespace std;
-
-enum WorkerRole {
-	MAPPER = 1,
-	REDUCER = 2
-};
+using grpc::Channel;
+using grpc::Status;
+using grpc::ClientAsyncResponseReader;
+using grpc::ClientContext;
+using grpc::CompletionQueue;
+using masterworker::MapReduceService;
+using masterworker::MapIn;
+using masterworker::MapOut;
+using masterworker::ReduceOut;
+using masterworker::ShardMessage;
 
 enum WorkerState {
 	AVAILABLE=1,
