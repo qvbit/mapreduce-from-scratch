@@ -57,8 +57,18 @@ class Master {
 /* CS6210_TASK: This is all the information your master will get from the framework.
 	You can populate your other class data members here if you want */
 Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_shards) {
+	pool_ = new ThreadPool(mr_spec.n_workers);
+	file_shards_ = file_shards;
+	mr_spec_ = mr_spec;
+	map_tasks_complete = 0;
 
+	// All workers initially available.
+	for (auto& worker_ipaddr_port : mr_spec.worker_ipaddr_ports) {
+		worker_state_[worker_ipaddr_port] = AVAILABLE;
+	}
 }
+
+
 
 
 /* CS6210_TASK: Here you go. once this function is called you will complete whole map reduce task and return true if succeeded */
