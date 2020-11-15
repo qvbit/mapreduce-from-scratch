@@ -126,11 +126,14 @@ void CallData::Proceed() {
 
 		if (job_type == MAP) {
 			cout << "[worker.h] INFO: Running a map job" << endl;
-			// Map logic
+			/* Map logic begins here */
+			// Get map function corresponding to the user id.
+			shared_ptr<BaseMapper> map_fn = get_mapper_from_task_factory(request_.user_id());
+
 		}
 		else {
 			cout << "[worker.h] INFO: Running a reduce job" << endl;
-			// Reduce logic
+			// Reduce logic here
 		}
 		
 		// And we are done! Let the gRPC runtime know we've finished, using the
