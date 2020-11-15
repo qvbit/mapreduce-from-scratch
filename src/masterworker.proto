@@ -8,18 +8,20 @@ service MapReduceWorker {
 
 message ShardComp {
     string filename=1;
-    int32 start = 2;
-    int32 end = 3;
-    int32 component_size = 4;
+    uint32 start = 2;
+    uint32 end = 3;
+    uint64 component_size = 4;
 }
 
 message WorkerRequest {
-    string user_id = 1;
-    int32 shard_id = 2;
-    repeated ShardComp fileshard = 3;
-    int32 n_output_files = 4;
-    string intermediate_loc = 5;
+    string user_id = 1; // User id as in config.ini
+    uint32 shard_id = 2;  // Shard id as calculated in file_shard.h
+    repeated ShardComp component = 3; // List of shard components within this file shard.
+    uint32 n_output_files = 4; // As defined in config.ini
+    string intermediate_loc = 5; // Where to save files after job.
     bool job_type = 6;  // 0: Map, 1: Reduce
+    uint64 shard_size = 7; // Size of full file shard (should be sum of components)
+    uint32 job_id = 8; // As defined in master.h (i in the for loop)
 }
 
 message WorkerReply {

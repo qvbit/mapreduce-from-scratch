@@ -16,14 +16,14 @@ struct ShardComponent {
      string filepath;
      streampos start;
      streampos end;
-     int component_size;
+     int component_size; // In bytes
 };
 
 /* CS6210_TASK: Create your own data structure here, where you can hold information about file splits,
      that your master would use for its own bookkeeping and to convey the tasks to the workers for mapping */
 struct FileShard {
      int shard_id;
-     int shard_size;
+     int shard_size; // In bytes
      // TODO: Would be effecient to have vector of pointers to struct rather than struct.
      vector<ShardComponent> shard_components;
 };
