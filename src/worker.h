@@ -129,6 +129,7 @@ void CallData::Proceed() {
 			/* Map logic begins here */
 			// Get map function corresponding to the user id.
 			shared_ptr<BaseMapper> map_fn = get_mapper_from_task_factory(request_.user_id());
+			
 
 		}
 		else {
