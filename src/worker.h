@@ -45,6 +45,13 @@ private:
 	/* -- Member functions -- */
 	// RPC handler from gRPC documentation.
 	void Handler();
+	// Functions for getting modifying map_fn's internal members from CallData.
+	static void setNOutputFiles (shared_ptr<BaseMapper>& map_fn, int input) {
+		map_fn->impl_->n_output_files_ = input;
+	}
+	void getIntermediateFiles(shared_ptr<BaseMapper>& map_fn) {
+		final_intermediate_files_ = map_fn->impl_->intermediate_files_;
+	}
 
 	/* -- Data Members -- */
 	// Keep track of worker ip address and port (for debugging purposes)
@@ -57,6 +64,8 @@ private:
 	unique_ptr<ServerCompletionQueue> cq_;
 	// MapReduceWorker's AsyncService
 	MapReduceWorker::AsyncService service_;
+	// Get the intermediate files.
+	unordered_set<string> final_intermediate_files_;
 };
 
 
@@ -129,7 +138,9 @@ void CallData::Proceed() {
 			/* Map logic begins here */
 			// Get map function corresponding to the user id.
 			shared_ptr<BaseMapper> map_fn = get_mapper_from_task_factory(request_.user_id());
-			
+
+			// Set the number of intermediate output files for the mapper (see mr_tasks.h)
+			Worker::setNOutputFiles(map_fn, request_.n_output_files());
 
 		}
 		else {
