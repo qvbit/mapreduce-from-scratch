@@ -31,6 +31,7 @@ struct BaseMapperInternal {
 
 /* CS6210_TASK Implement this function */
 inline BaseMapperInternal::BaseMapperInternal() {
+	// Constuct <hashed key, interemediate output filepath> mapping.
 	for (int i=0; i < n_output_files_; i++) {
 		hashkey_to_filepath_[to_string(i)] = "output/intermediate" + to_string(i) + ".txt";
 	}
@@ -44,23 +45,28 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 	string hashed_key = to_string(string_hash_fn_(key) % n_output_files_);
 	// Look up the filepath for this key.
 	string filepath = hashkey_to_filepath_[hashed_key];
-	// Open file with append mode.
-	ofstream ofs(filepath, ios::app);
 
-	if (ofs.is_open()) {
-		ofs << key << " " << val << endl;
-	}
-	else {
-		cerr << "[mr_tasks.h] ERROR: Failed to open file: " << filepath << endl;
-		exit(1);
-	}
-	ofs.close();
+	{	// Critical section needed for writing results.
+		unique_lock<mutex> lock(file_mutex_);
 
-	// Note that we need to do this step since we have no way of knowing apriori exactly 
-	// which of the files will be written to. E.g. if n_output_files = R = 8 but the keys 
-	// happen to hash to only values 1, 2 then 6 of the files will be unused and should not be
-	// forwarded to the master.
-	intermediate_files_.insert(filepath);
+		ofstream ofs(filepath, ios::app);
+
+		// Open file with append mode.
+		if (ofs.is_open()) {
+			ofs << key << " " << val << endl;
+		}
+		else {
+			cerr << "[mr_tasks.h] ERROR: Unable to open file: " << filepath << endl;
+			exit(1);
+		}
+		ofs.close();
+
+		// Note that we need to do this step since we have no way of knowing apriori exactly 
+		// which of the files will be written to. E.g. if n_output_files = R = 8 but the keys 
+		// happen to hash to only values 1, 2 then 6 of the files will be unused and should not be
+		// forwarded to the master.
+		intermediate_files_.insert(filepath);
+	}
 }
 
 
