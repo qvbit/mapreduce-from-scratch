@@ -21,7 +21,6 @@ message WorkerRequest {
     string intermediate_loc = 5; // Where to save files after job.
     bool job_type = 6;  // 0: Map, 1: Reduce
     uint64 shard_size = 7; // Size of full file shard (should be sum of components)
-    uint32 job_id = 8; // As defined in master.h (i in the for loop)
 }
 
 message WorkerReply {

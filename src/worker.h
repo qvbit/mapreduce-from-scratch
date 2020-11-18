@@ -5,6 +5,7 @@
 #include <fstream>
 #include <grpc++/grpc++.h>
 #include <mr_task_factory.h>
+#include <string>
 
 #include "mr_tasks.h"
 #include "masterworker.pb.h"
@@ -49,8 +50,8 @@ private:
 	static void setNOutputFiles (shared_ptr<BaseMapper>& map_fn, int input) {
 		map_fn->impl_->n_output_files_ = input;
 	}
-	void getIntermediateFiles(shared_ptr<BaseMapper>& map_fn) {
-		final_intermediate_files_ = map_fn->impl_->intermediate_files_;
+	static unordered_set<string> getIntermediateFiles(shared_ptr<BaseMapper>& map_fn) {
+		return map_fn->impl_->intermediate_files_;
 	}
 
 	/* -- Data Members -- */
@@ -142,21 +143,61 @@ void CallData::Proceed() {
 			// Set the number of intermediate output files for the mapper (see mr_tasks.h)
 			Worker::setNOutputFiles(map_fn, request_.n_output_files());
 
+			// Iterate over the shard components that make up the shard.
+			for (int i=0; i < request_.component_size(); i++) {
+				// Get relevant data from request
+				ShardComp shard_comp = request_.component(i);
+				string filename = shard_comp.filename();
+				streampos start = shard_comp.start();
+				streampos end = shard_comp.end();
+				int component_size = shard_comp.component_size();
+
+				// Debug
+				cout << "[worker.h] INFO: Map job running on shard component: " \
+				<< "\t Parent shard id: " << request_.shard_id() \
+				<< "\t Parent shard size: " << request_.shard_size() \
+				<< "\t Component filename: " << filename \
+				<< "\t Component size: " << component_size \
+				<< "\t Component Start: " << start \
+				<< "\t Component End: " << end << endl;
+				
+				// Read lines from file for corresponding shard component.
+				ifstream ifs(filename, ios::binary);
+				if (ifs.is_open()) {
+					ifs.seekg(start, ios::beg);
+					string line;
+					while(ifs.tellg() < end && getline(ifs, line)) {
+						map_fn->map(line);
+					}
+					ifs.close();
+				}
+				else {
+					cerr << "[worker.h] ERROR: Cannot open shard input file: " << filename << endl;
+					exit(1);
+				}
+			}
+			// Shard has been processed. Construct the reply with the result intermediate files.
+			cout << "[worker.h] INFO: Shard " << request_.shard_id() << " has been processed." << endl;
+			unordered_set<string> intermediate_files = Worker::getIntermediateFiles(map_fn);
+			for (const string& file : intermediate_files) {
+				reply_.add_intermediate_files(file);
+			}
+			reply_.set_complete(true);
+			
+			// Map job complete.
+			cout << "[worker.h] INFO: Map job complete!" << endl;
 		}
 		else {
-			cout << "[worker.h] INFO: Running a reduce job" << endl;
+			cout << "[worker.h] INFO: Running a reduce job..." << endl;
 			// Reduce logic here
+
+			// Reduce job complete
+			cout << "[worker.h] INFO: Reduce job complete!" << endl;
 		}
 		
 		// And we are done! Let the gRPC runtime know we've finished, using the
 		// memory address of this instance as the uniquely identifying tag for
 		// the event.
-		if (job_type == MAP) {
-			cout << "[worker.h] INFO: Map job complete" << endl;
-		}
-		else {
-			cout << "[worker.h] INFO: Reduce job complete" << endl;
-		}
 		status_ = FINISH;
 		responder_.Finish(reply_, Status::OK, this);
 	} else {

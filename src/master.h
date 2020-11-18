@@ -85,8 +85,7 @@ bool Master::runMap() {
 				// Keep looping until we find an available worker.
 				string worker_addr = "-1";
 				while (worker_addr == "-1") {
-					// Critical section
-					{
+					{	// Critical section
 						unique_lock<mutex> lock(this->mutex_worker_state_);
 						worker_addr = this->getWorker();
 					}
@@ -123,7 +122,7 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 	request.set_user_id(mr_spec_.user_id);
 	request.set_shard_id(fileshard.shard_id);
 	request.set_n_output_files(mr_spec_.n_output_files);
-	// request.set_intermediate_loc(...)
+	// request.set_intermediate_loc(...) // Not used for mapper
 	request.set_job_type(MAP);
 	request.set_shard_size(fileshard.shard_size);
 
