@@ -157,6 +157,8 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 		return false;
 	}
 
+	GPR_ASSERT(reply.complete());
+
 	// Save temporary file(s) to set. 
 	for (int i=0; i < reply.intermediate_files_size(); i++) {
 		intermediate_files_.insert(reply.intermediate_files(i));
@@ -196,8 +198,49 @@ bool Master::runReduce() {
 	return true;
 }
 
-
+// Reference for grpc boilerplate: https://grpc.io/docs/languages/cpp/async/
 bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
+	cout << "[master.h] INFO: (asyncReduce) Worker addr:" << worker_addr << " is running now!" << endl;
+
+	// Create stub
+	unique_ptr<MapReduceWorker::Stub> stub = MapReduceWorker::NewStub(
+		grpc::CreateChannel(worker_addr, grpc::InsecureChannelCredentials())
+	);
+
+	// Create the message
+	WorkerRequest request;
+	request.set_user_id(mr_spec_.user_id);
+	request.set_n_output_files(mr_spec_.n_output_files);
+	request.set_intermediate_loc(filepath);
+	request.set_job_type(REDUCE);
+
+	// Initialize the RPC call and create handle (rpc). Also bind it to cq.
+	ClientContext context;
+	CompletionQueue cq;
+	unique_ptr<ClientAsyncResponseReader<WorkerReply>> rpc(
+		stub->AsyncWorkerFn(&context, request, &cq)
+	);
+
+	// Ask for the reply and final status
+	WorkerReply reply;
+	Status status;
+	rpc->Finish(&reply, &status, (void*)1);
+
+	// Wait for cq to return the next tag. The reply and status are ready once the tag 
+	// passed into the corresponding Finish() call is returned.
+	void* got_tag;
+	bool ok = false;
+	GPR_ASSERT(cq.Next(&got_tag, &ok));
+	GPR_ASSERT(ok && got_tag == (void*)1);
+
+	if (!status.ok()) {
+		cout << "[master.h] ERROR: " << status.error_code() << " - " << status.error_message() << endl;
+		return false;
+	}
+	
+	GPR_ASSERT(reply.complete());
+
+	worker_state_[worker_addr] = AVAILABLE;
 	return true;
 }
 
@@ -225,8 +268,8 @@ bool Master::run() {
 	}
 
 	/* -------------------------- REDUCE -------------------------- */
-	// GPR_ASSERT(runReduce());
-
+	GPR_ASSERT(runReduce());
+	cout << "[master.h] INFO: Full MapReduce job is complete!!! Master exiting..." << endl;
 
 	return true;
 }
