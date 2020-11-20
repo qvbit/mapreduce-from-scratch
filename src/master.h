@@ -85,10 +85,9 @@ bool Master::runMap() {
 				// Keep looping until we find an available worker.
 				string worker_addr = "-1";
 				while (worker_addr == "-1") {
-					{	// Critical section
-						unique_lock<mutex> lock(this->mutex_worker_state_);
-						worker_addr = this->getWorker();
-					}
+					// Critical section
+					lock_guard<mutex> lock(this->mutex_worker_state_);
+					worker_addr = this->getWorker();
 				}
 				// We now have an available worker. Call the RPC.
 				cout << "[master.h] INFO: (runMap) Worker addr:" << worker_addr << " assigned to shard: " << i << endl;

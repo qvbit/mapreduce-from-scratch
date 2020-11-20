@@ -3,11 +3,13 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+// #include <experimental/filesystem>
 #include <mutex>
 #include <unordered_set>
 #include <unordered_map>
 
 using namespace std;
+// namespace fs = experimental::filesystem;
 
 /* CS6210_TASK Implement this data structureas per your implementation.
 		You will need this when your worker is running the map task*/
@@ -29,7 +31,10 @@ struct BaseMapperInternal {
 
 
 /* CS6210_TASK Implement this function */
-inline BaseMapperInternal::BaseMapperInternal() {}
+inline BaseMapperInternal::BaseMapperInternal() {
+	// Create directory if it does not already exist.
+	// fs::create_directory("tmp");
+}
 
 
 /* CS6210_TASK Implement this function */
@@ -38,9 +43,10 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 	// Hash the key so that we can distribute the keys randomly and evenly to R output files (by key)
 	string hashed_key = to_string(string_hash_fn_(key) % n_output_files_);
 	// Look up the filepath for this key.
-	string filepath = "intermediate" + hashed_key + ".txt";
+	string filepath = "tmp/intermediate" + hashed_key + ".txt";
 	// cout << "[mr_tasks.h] INFO: Intermediate filepath is: " << filepath << endl;
 
+	// Critical section to write to file
 	lock_guard<mutex> lock(file_mutex_);
 
 	ofstream ofs(filepath, ios::app);
