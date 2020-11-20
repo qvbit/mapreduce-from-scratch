@@ -25,17 +25,11 @@ struct BaseMapperInternal {
 		mutex file_mutex_;  // Synchronize access to the file so multiple workers don't write at the same time.
 		hash<string> string_hash_fn_;  // String hash fn fresh from the factory.
 		unordered_set<string> intermediate_files_;  // Intermediate files output by mapper.
-		unordered_map<string, string> hashkey_to_filepath_; // Contains mapping from hashed key to intermediate output loc.
 };
 
 
 /* CS6210_TASK Implement this function */
-inline BaseMapperInternal::BaseMapperInternal() {
-	// Constuct <hashed key, interemediate output filepath> mapping.
-	for (int i=0; i < n_output_files_; i++) {
-		hashkey_to_filepath_[to_string(i)] = "output/intermediate" + to_string(i) + ".txt";
-	}
-}
+inline BaseMapperInternal::BaseMapperInternal() {}
 
 
 /* CS6210_TASK Implement this function */
@@ -44,29 +38,28 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 	// Hash the key so that we can distribute the keys randomly and evenly to R output files (by key)
 	string hashed_key = to_string(string_hash_fn_(key) % n_output_files_);
 	// Look up the filepath for this key.
-	string filepath = hashkey_to_filepath_[hashed_key];
+	string filepath = "intermediate" + hashed_key + ".txt";
+	// cout << "[mr_tasks.h] INFO: Intermediate filepath is: " << filepath << endl;
 
-	{	// Critical section needed for writing results.
-		unique_lock<mutex> lock(file_mutex_);
+	lock_guard<mutex> lock(file_mutex_);
 
-		ofstream ofs(filepath, ios::app);
+	ofstream ofs(filepath, ios::app);
 
-		// Open file with append mode.
-		if (ofs.is_open()) {
-			ofs << key << " " << val << endl;
-		}
-		else {
-			cerr << "[mr_tasks.h] ERROR: Unable to open file: " << filepath << endl;
-			exit(1);
-		}
-		ofs.close();
-
-		// Note that we need to do this step since we have no way of knowing apriori exactly 
-		// which of the files will be written to. E.g. if n_output_files = R = 8 but the keys 
-		// happen to hash to only values 1, 2 then 6 of the files will be unused and should not be
-		// forwarded to the master.
-		intermediate_files_.insert(filepath);
+	// Open file with append mode.
+	if (ofs.is_open()) {
+		ofs << key << " " << val << endl;
 	}
+	else {
+		cerr << "[mr_tasks.h] ERROR: Unable to open file: " << filepath << endl;
+		exit(1);
+	}
+	ofs.close();
+
+	// Note that we need to do this step since we have no way of knowing apriori exactly 
+	// which of the files will be written to. E.g. if n_output_files = R = 8 but the keys 
+	// happen to hash to only values 1, 2 then 6 of the files will be unused and should not be
+	// forwarded to the master.
+	intermediate_files_.insert(filepath);
 }
 
 

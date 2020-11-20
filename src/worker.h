@@ -153,13 +153,14 @@ void CallData::Proceed() {
 				int component_size = shard_comp.component_size();
 
 				// Debug
-				cout << "[worker.h] INFO: Map job running on shard component: " \
-				<< "\t Parent shard id: " << request_.shard_id() \
-				<< "\t Parent shard size: " << request_.shard_size() \
-				<< "\t Component filename: " << filename \
-				<< "\t Component size: " << component_size \
-				<< "\t Component Start: " << start \
-				<< "\t Component End: " << end << endl;
+				cout << "[worker.h] INFO: Map job running on shard component: " << endl\
+				<< "\t Parent shard id: " << request_.shard_id() << endl\
+				<< "\t Parent shard size: " << request_.shard_size() << endl\
+				<< "\t Component filename: " << filename << endl\
+				<< "\t Component size: " << component_size << endl\
+				<< "\t Component Start: " << start << endl\
+				<< "\t Component End: " << end << endl
+				<< "--------------------------------------------------------------------------" << endl;
 				
 				// Read lines from file for corresponding shard component.
 				ifstream ifs(filename, ios::binary);
