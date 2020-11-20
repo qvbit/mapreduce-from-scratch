@@ -47,7 +47,7 @@ class Master {
 		bool runMap();
 		bool runReduce();
 		bool asyncMap(const string&, const FileShard&);
-		bool asyncReduce(const string&, const FileShard&);
+		bool asyncReduce(const string&, const string&);
 		string getWorker();
 
 		// Data members
@@ -168,11 +168,36 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 
 
 bool Master::runReduce() {
+	vector<future<bool>> results;
+
+	cout << "[master.h] INFO: # Intermediate files for Reducer: " << intermediate_files_.size() << endl;
+	for (const auto& file : intermediate_files_) {
+		results.emplace_back(
+			pool_->queueTask([this, file] {
+				string worker_addr = "-1";
+				while (worker_addr == "-1") {
+					lock_guard<mutex> lock(this->mutex_worker_state_);
+					worker_addr = this->getWorker();
+				}
+				cout << "[master.h] INFO: (runReduce) Worker addr:" << worker_addr << " assigned to file: " << file << endl;
+				bool rpc_res = this->asyncReduce(worker_addr, file);
+
+				return rpc_res;
+			})
+		);
+	}
+	// This blocks until all mappers are done effectively implementing a barrier before the reduce.
+    for(auto&& result : results) {
+		cout << "Reduce result!!" << endl;
+        if (!result.get()) {
+			return false;
+		}
+	}
 	return true;
 }
 
 
-bool Master::asyncReduce(const string&, const FileShard&) {
+bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 	return true;
 }
 
