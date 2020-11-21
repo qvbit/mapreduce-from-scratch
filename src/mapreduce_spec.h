@@ -3,8 +3,10 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
+#include <assert.h>
 #include <map>
 
 using namespace std;
@@ -78,8 +80,65 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec) {
 		}
 	};
 
-	// Validate mr_spec
+	// Validate n_workers
+	if (mr_spec.n_workers <= 0) {
+		cerr << "[mapreduce_spec.h] ERROR: Number of workers must be positive" << endl;
+		exit(1);
+	}
+	if (mr_spec.n_workers != mr_spec.worker_ipaddr_ports.size()) {
+		cerr << "[mapreduce_spec.h] ERROR: Number of workers must match worker_addr list" << endl;
+		exit(1);
+	}
 	
+	// Validate worker_ipaddr_ports
+	for (auto& ip : mr_spec.worker_ipaddr_ports) {
+		size_t pos = ip.find(":");
+		string host = ip.substr(0, pos);
+		string port = ip.substr(pos+1);
+		
+		if(host.compare("localhost") != 0) {
+			cerr << "[mapreduce_spec.h] ERROR: Host must be localhost, not " << host << endl;
+			exit(1);
+		}
+		if ( !(stoi(port) >= 0 && stoi(port) <= 65535) ) {
+			cerr << "[mapreduce_spec.h] ERROR: Not a valid TCP/IP port, must be 0 <= port <= 65535" << endl;
+			exit(1);
+		}
+	}
+
+	// Validate input files
+	for (auto& file : mr_spec.input_files) {
+		ifstream ifs(file);
+		if (!ifs.is_open()) {
+			cerr << "[mapreduce_spec.h] ERROR: Unable to open input file. Please make sure it was symbolically linked properly" << endl;
+			exit(1);
+		}
+		ifs.close();
+	}
+
+	// Validate output file
+	if(mr_spec.output_dir.empty()) {
+		cerr << "[mapreduce_spec.h] ERROR: No output_dir was specified." << endl;
+		exit(1);
+	}
+
+	// Validate n_output_files
+	if (mr_spec.n_output_files <= 0) {
+		cerr << "[mapreduce_spec.h] ERROR: n_output_files must be a positive number." << endl;
+		exit(1);
+	}
+
+	// Validate map_kilobytes
+	if (mr_spec.map_kilobytes <= 0) {
+		cerr << "[mapreduce_spec.h] ERROR: map_kilobytes must be greater than 0." << endl;
+		exit(1);
+	}
+
+	// Validate user_id
+	if (mr_spec.user_id.empty()) {
+		cerr << "[mapreduce_spec.h] ERROR: No user_id specified; you must specify one!" << endl;
+		exit(1);
+	}
 
 	// Print out mr_spec
 	cout << "----------------- Displaying Mr. Spec -----------------" << endl;
