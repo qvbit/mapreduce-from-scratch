@@ -10,6 +10,7 @@
 #include <mutex>
 #include <chrono>
 #include <sys/stat.h>
+#include <assert.h>
 #include <grpc++/grpc++.h>
 
 #include "mapreduce_spec.h"
@@ -168,7 +169,7 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 	}
 
 	// Make sure job actually completed. 
-	GPR_ASSERT(reply.complete());
+	assert(reply.complete());
 
 	// Save temporary file(s) to set. 
 	for (int i=0; i < reply.intermediate_files_size(); i++) {
@@ -256,7 +257,7 @@ bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 	}
 	
 	// Make sure job actually completed. 
-	GPR_ASSERT(reply.complete());
+	assert(reply.complete());
 
 	// Make worker available.
 	worker_state_[worker_addr] = AVAILABLE;
