@@ -53,7 +53,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 		ofs << key << " " << val << endl;
 	}
 	else {
-		cerr << "[mr_tasks.h] ERROR: Unable to open file: " << filepath << endl;
+		cerr << "[mr_tasks.h] (Map) ERROR: Unable to open file: " << filepath << endl;
 		exit(1);
 	}
 	ofs.close();
@@ -76,16 +76,35 @@ struct BaseReducerInternal {
 		void emit(const std::string& key, const std::string& val);
 
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
+		string output_loc_;
+		mutex file_mutex_;
+		int n_output_files_;  // Corresponds to R (number of reduce tasks)
+		hash<string> string_hash_fn_;  // String hash fn fresh from the factory.
 };
 
 
 /* CS6210_TASK Implement this function */
-inline BaseReducerInternal::BaseReducerInternal() {
-
-}
+inline BaseReducerInternal::BaseReducerInternal() {}
 
 
 /* CS6210_TASK Implement this function */
 inline void BaseReducerInternal::emit(const std::string& key, const std::string& val) {
 	// std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
+	string hashed_key = to_string(string_hash_fn_(key) % n_output_files_);
+	string filepath = output_loc_ + "/output" + hashed_key + ".txt";
+
+	// Critical section to write to file
+	lock_guard<mutex> lock(file_mutex_);
+
+	ofstream ofs(filepath, ios::app);
+
+	// Open file with append mode.
+	if (ofs.is_open()) {
+		ofs << key << " " << val << endl;
+	}
+	else {
+		cerr << "[mr_tasks.h] (Reduce) ERROR: Unable to open file: " << filepath << endl;
+		exit(1);
+	}
+	ofs.close();
 }

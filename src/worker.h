@@ -2,7 +2,9 @@
 
 #include <iostream>
 #include <unordered_set>
+#include <map>
 #include <fstream>
+#include <sstream>
 #include <grpc++/grpc++.h>
 #include <mr_task_factory.h>
 #include <string>
@@ -52,6 +54,12 @@ private:
 	}
 	static void setTmpLoc(shared_ptr<BaseMapper>& map_fn, string input) {
 		map_fn->impl_->tmp_loc_ = input;
+	}
+	static void setNOutputFilesReducer (shared_ptr<BaseReducer>& reduce_fn, int input) {
+		reduce_fn->impl_->n_output_files_ = input;
+	}
+	static void setOutputLoc(shared_ptr<BaseReducer>& reduce_fn, string input) {
+		reduce_fn->impl_->output_loc_ = input;
 	}
 	static unordered_set<string> getIntermediateFiles(shared_ptr<BaseMapper>& map_fn) {
 		return map_fn->impl_->intermediate_files_;
@@ -200,6 +208,45 @@ void CallData::Proceed() {
 			// Get reuce function corresponding to the user id.
 			shared_ptr<BaseReducer> reduce_fn = get_reducer_from_task_factory(request_.user_id());
 			
+			// Set number of output files.
+			Worker::setNOutputFilesReducer(reduce_fn, request_.n_output_files());
+
+			// Set output directory
+			Worker::setOutputLoc(reduce_fn, request_.output_loc());
+
+			// Read lines from intermediate file and call reduce on them.
+			string filename = request_.tmp_loc();
+			ifstream ifs(filename, ios::binary);
+
+			// Data structure for getting input for reducer
+			map<string, vector<string>> grouped_keys;
+
+			if (ifs.is_open()) {
+				string line;
+				while (getline(ifs, line)) {
+					istringstream linestream(line);
+					string key;
+					string value;
+
+					linestream >> key;
+					linestream >> value;
+
+					grouped_keys[key].push_back(value);
+				}
+				ifs.close();
+			}
+			else {
+				cerr << "[worker.h] (Reduce) ERROR: Cannot open tmp input file: " << filename << endl;
+				exit(1);
+			}
+
+			// Call the actual reduce function with accumulated keys.
+			for (auto& pair : grouped_keys) {
+				reduce_fn->reduce(pair.first, pair.second);
+			}
+			
+			// Mark reply as complete.
+			reply_.set_complete(true);
 
 			// Reduce job complete
 			cout << "[worker.h] INFO: Reduce job complete!" << endl;

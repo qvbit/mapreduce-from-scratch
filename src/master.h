@@ -258,12 +258,6 @@ bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 	// Make sure job actually completed. 
 	GPR_ASSERT(reply.complete());
 
-	// Job complete: remove temp directory.
-	for (const auto& tmp_file : intermediate_files_) {
-		if (remove(tmp_file.c_str()) != 0)
-			cout << "[master.h] WARNING: Failed to delete temp file.";
-	}
-
 	// Make worker available.
 	worker_state_[worker_addr] = AVAILABLE;
 	return true;
@@ -294,8 +288,14 @@ bool Master::run() {
 
 
 	/* -------------------------- REDUCE -------------------------- */
-	// GPR_ASSERT(runReduce());
+	GPR_ASSERT(runReduce());
 	cout << "[master.h] INFO: Full MapReduce job is complete!!! Master exiting..." << endl;
+
+	// Job complete: remove temp directory.
+	for (const auto& tmp_file : intermediate_files_) {
+		if (remove(tmp_file.c_str()) != 0)
+			cout << "[master.h] WARNING: Failed to delete temp file.";
+	}
 
 	return true;
 }
