@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <stdio.h>
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -8,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <sys/stat.h>
 #include <grpc++/grpc++.h>
 
 #include "mapreduce_spec.h"
@@ -57,6 +59,7 @@ class Master {
 		ThreadPool *pool_;  // Same thread pool from last project
 		map<string, WorkerState> worker_state_; // <worker_addr, AVAILABLE/BUSY>
 		mutex mutex_worker_state_; // Mutex for synchronized access to worker_state_
+		string tmp_loc_;
 };
 
 
@@ -71,6 +74,10 @@ Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_
 	for (auto& worker_ipaddr_port : mr_spec.worker_ipaddr_ports) {
 		worker_state_[worker_ipaddr_port] = AVAILABLE;
 	}
+
+	// Set tmp directory (hardcoded for now).
+	tmp_loc_ = "tmp";
+
 	cout << "[master.h] INFO: Master initialized." << endl;
 }
 
@@ -111,6 +118,9 @@ bool Master::runMap() {
 bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 	cout << "[master.h] INFO: (asyncMap) Worker addr:" << worker_addr << " is running now!" << endl;
 
+	// Create temp directory if it does not already exist.
+	mkdir(tmp_loc_.c_str(), S_IRWXU);
+
 	// Create stub
 	unique_ptr<MapReduceWorker::Stub> stub = MapReduceWorker::NewStub(
 		grpc::CreateChannel(worker_addr, grpc::InsecureChannelCredentials())
@@ -121,7 +131,7 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 	request.set_user_id(mr_spec_.user_id);
 	request.set_shard_id(fileshard.shard_id);
 	request.set_n_output_files(mr_spec_.n_output_files);
-	// request.set_intermediate_loc(...) // Not used for mapper
+	request.set_tmp_loc(tmp_loc_);
 	request.set_job_type(MAP);
 	request.set_shard_size(fileshard.shard_size);
 
@@ -157,6 +167,7 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 		return false;
 	}
 
+	// Make sure job actually completed. 
 	GPR_ASSERT(reply.complete());
 
 	// Save temporary file(s) to set. 
@@ -164,7 +175,9 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 		intermediate_files_.insert(reply.intermediate_files(i));
 	}
 
+	// Make worker available for work.
 	worker_state_[worker_addr] = AVAILABLE;
+	
 	return true;
 }
 
@@ -202,6 +215,9 @@ bool Master::runReduce() {
 bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 	cout << "[master.h] INFO: (asyncReduce) Worker addr:" << worker_addr << " is running now!" << endl;
 
+	// Create output directory if it does not already exist.
+	mkdir(mr_spec_.output_dir.c_str(), S_IRWXU);
+
 	// Create stub
 	unique_ptr<MapReduceWorker::Stub> stub = MapReduceWorker::NewStub(
 		grpc::CreateChannel(worker_addr, grpc::InsecureChannelCredentials())
@@ -211,7 +227,8 @@ bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 	WorkerRequest request;
 	request.set_user_id(mr_spec_.user_id);
 	request.set_n_output_files(mr_spec_.n_output_files);
-	request.set_intermediate_loc(filepath);
+	request.set_tmp_loc(filepath);
+	request.set_output_loc(mr_spec_.output_dir);
 	request.set_job_type(REDUCE);
 
 	// Initialize the RPC call and create handle (rpc). Also bind it to cq.
@@ -238,8 +255,16 @@ bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 		return false;
 	}
 	
+	// Make sure job actually completed. 
 	GPR_ASSERT(reply.complete());
 
+	// Job complete: remove temp directory.
+	for (const auto& tmp_file : intermediate_files_) {
+		if (remove(tmp_file.c_str()) != 0)
+			cout << "[master.h] WARNING: Failed to delete temp file.";
+	}
+
+	// Make worker available.
 	worker_state_[worker_addr] = AVAILABLE;
 	return true;
 }
@@ -267,8 +292,9 @@ bool Master::run() {
 		cout << "\t" << elem << endl;
 	}
 
+
 	/* -------------------------- REDUCE -------------------------- */
-	GPR_ASSERT(runReduce());
+	// GPR_ASSERT(runReduce());
 	cout << "[master.h] INFO: Full MapReduce job is complete!!! Master exiting..." << endl;
 
 	return true;

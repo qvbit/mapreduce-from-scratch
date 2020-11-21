@@ -22,7 +22,7 @@ struct BaseMapperInternal {
 		void emit(const std::string& key, const std::string& val);
 
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
-		string output_dir_;  // Output directory of files
+		string tmp_loc_;  // Output directory of files
 		int n_output_files_;  // Corresponds to R (number of reduce tasks)
 		mutex file_mutex_;  // Synchronize access to the file so multiple workers don't write at the same time.
 		hash<string> string_hash_fn_;  // String hash fn fresh from the factory.
@@ -31,10 +31,7 @@ struct BaseMapperInternal {
 
 
 /* CS6210_TASK Implement this function */
-inline BaseMapperInternal::BaseMapperInternal() {
-	// Create directory if it does not already exist.
-	// fs::create_directory("tmp");
-}
+inline BaseMapperInternal::BaseMapperInternal() {}
 
 
 /* CS6210_TASK Implement this function */
@@ -43,7 +40,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 	// Hash the key so that we can distribute the keys randomly and evenly to R output files (by key)
 	string hashed_key = to_string(string_hash_fn_(key) % n_output_files_);
 	// Look up the filepath for this key.
-	string filepath = "tmp/intermediate" + hashed_key + ".txt";
+	string filepath = tmp_loc_ + "/intermediate" + hashed_key + ".txt";
 	// cout << "[mr_tasks.h] INFO: Intermediate filepath is: " << filepath << endl;
 
 	// Critical section to write to file
@@ -61,10 +58,6 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 	}
 	ofs.close();
 
-	// Note that we need to do this step since we have no way of knowing apriori exactly 
-	// which of the files will be written to. E.g. if n_output_files = R = 8 but the keys 
-	// happen to hash to only values 1, 2 then 6 of the files will be unused and should not be
-	// forwarded to the master.
 	intermediate_files_.insert(filepath);
 }
 
@@ -94,5 +87,5 @@ inline BaseReducerInternal::BaseReducerInternal() {
 
 /* CS6210_TASK Implement this function */
 inline void BaseReducerInternal::emit(const std::string& key, const std::string& val) {
-	std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
+	// std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
 }

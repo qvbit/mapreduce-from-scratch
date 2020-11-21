@@ -13,5 +13,3 @@ add_subdirectory(external)
 add_subdirectory(src)
 add_subdirectory(test)
 
-add_custom_target(build-time-make-directory ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/tmp)

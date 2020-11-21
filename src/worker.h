@@ -50,6 +50,9 @@ private:
 	static void setNOutputFiles (shared_ptr<BaseMapper>& map_fn, int input) {
 		map_fn->impl_->n_output_files_ = input;
 	}
+	static void setTmpLoc(shared_ptr<BaseMapper>& map_fn, string input) {
+		map_fn->impl_->tmp_loc_ = input;
+	}
 	static unordered_set<string> getIntermediateFiles(shared_ptr<BaseMapper>& map_fn) {
 		return map_fn->impl_->intermediate_files_;
 	}
@@ -143,6 +146,9 @@ void CallData::Proceed() {
 			// Set the number of intermediate output files for the mapper (see mr_tasks.h)
 			Worker::setNOutputFiles(map_fn, request_.n_output_files());
 
+			// Set tmp directory.
+			Worker::setTmpLoc(map_fn, request_.tmp_loc());
+
 			// Iterate over the shard components that make up the shard.
 			for (int i=0; i < request_.component_size(); i++) {
 				// Get relevant data from request
@@ -191,6 +197,9 @@ void CallData::Proceed() {
 		else {
 			cout << "[worker.h] INFO: Running a reduce job..." << endl;
 			// Reduce logic here
+			// Get reuce function corresponding to the user id.
+			shared_ptr<BaseReducer> reduce_fn = get_reducer_from_task_factory(request_.user_id());
+			
 
 			// Reduce job complete
 			cout << "[worker.h] INFO: Reduce job complete!" << endl;
