@@ -13,3 +13,7 @@ add_subdirectory(external)
 add_subdirectory(src)
 add_subdirectory(test)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test/input/testdata_1.txt ${CMAKE_BINARY_DIR}/bin/input/testdata_1.txt COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test/input/testdata_2.txt ${CMAKE_BINARY_DIR}/bin/input/testdata_2.txt COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test/input/testdata_3.txt ${CMAKE_BINARY_DIR}/bin/input/testdata_3.txt COPYONLY)
+

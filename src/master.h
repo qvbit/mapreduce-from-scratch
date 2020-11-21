@@ -169,7 +169,7 @@ bool Master::asyncMap(const string& worker_addr, const FileShard& fileshard) {
 	}
 
 	// Make sure job actually completed. 
-	assert(reply.complete());
+	// assert(reply.complete());
 
 	// Save temporary file(s) to set. 
 	for (int i=0; i < reply.intermediate_files_size(); i++) {
@@ -257,7 +257,7 @@ bool Master::asyncReduce(const string& worker_addr, const string& filepath) {
 	}
 	
 	// Make sure job actually completed. 
-	assert(reply.complete());
+	// assert(reply.complete());
 
 	// Make worker available.
 	worker_state_[worker_addr] = AVAILABLE;
@@ -280,7 +280,7 @@ inline string Master::getWorker() {
 /* CS6210_TASK: Here you go. once this function is called you will complete whole map reduce task and return true if succeeded */
 bool Master::run() {
 	/* --------------------------- MAP --------------------------- */
-	GPR_ASSERT(runMap());
+	assert(runMap());
 	cout << "[master.h] INFO: Map job complete!" << endl;
 	cout << "[master.h] INFO: All temp files output by Mappers: " << endl;
 	for (const auto& elem : intermediate_files_) {
@@ -289,7 +289,7 @@ bool Master::run() {
 
 
 	/* -------------------------- REDUCE -------------------------- */
-	GPR_ASSERT(runReduce());
+	assert(runReduce());
 	cout << "[master.h] INFO: Full MapReduce job is complete!!! Master exiting..." << endl;
 
 	// Job complete: remove temp directory.

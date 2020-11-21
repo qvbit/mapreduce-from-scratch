@@ -23,6 +23,3 @@ add_custom_command(
         DEPENDS ${destination}
         COMMENT "symbolic link ${destination} created."
 )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input/testdata_1.txt ${CMAKE_BINARY_DIR}/bin/input/testdata_1.txt COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input/testdata_2.txt ${CMAKE_BINARY_DIR}/bin/input/testdata_2.txt COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input/testdata_3.txt ${CMAKE_BINARY_DIR}/bin/input/testdata_3.txt COPYONLY)

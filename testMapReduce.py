@@ -3,8 +3,9 @@ import string
 import collections
 import itertools
 
-NUM_OUTPUTS = 4
-NUM_INPUTS = 2
+# TODO: pass via command line for better functionality
+NUM_OUTPUTS = 12
+NUM_INPUTS = 3
 
 
 class TestMapReduce(unittest.TestCase):

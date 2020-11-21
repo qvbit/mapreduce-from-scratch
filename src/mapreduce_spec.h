@@ -79,7 +79,7 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec) {
 	};
 
 	// Validate mr_spec
-	// TODO: Validate mr_spec
+	
 
 	// Print out mr_spec
 	cout << "----------------- Displaying Mr. Spec -----------------" << endl;
