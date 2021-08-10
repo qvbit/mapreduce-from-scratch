@@ -1,4 +1,4 @@
-Implementation of the MapReduce framework from scratch in C++ using gRPC for communicaton between nodes. 
+Implementation of the MapReduce framework from scratch in C++ using gRPC & protocol buffers for communicaton between nodes. 
 
 I referenced the async grpc (https://grpc.io/docs/languages/cpp/async/) documentation heavily to implement the gRPC boilerplate in worker.h and master.h.
 
